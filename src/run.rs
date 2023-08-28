@@ -155,14 +155,15 @@ impl Plan {
             floor_dist[self.step_lookup_table[step]] += dist[step]
         }
 
-        let mut cumulative = 0.0;
+        let mut cumulative = 1.0;
         let rows: Vec<(floor::FloorNum, f64, f64)> = floor_dist
             .into_iter()
             .enumerate()
             .skip_while(|&(_, prob)| prob < PRINT_EPSILON)
             .map(|(floor, prob)| {
-                cumulative += prob;
-                return (floor, prob, cumulative);
+                let row = (floor, prob, cumulative);
+                cumulative -= prob;
+                return row;
             })
             .collect();
         let last_index = rows
@@ -180,7 +181,7 @@ impl Plan {
                     (floor - 1) / 8,
                     floor,
                     100.0 * prob,
-                    100.0 * cumulative
+                    100.0 * cumulative,
                 );
             })
             .collect::<Vec<String>>()
