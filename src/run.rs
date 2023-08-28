@@ -54,7 +54,7 @@ impl Plan {
         super_siphon: bool,
         uu: bool,
         string_stepping: bool,
-        setup: fn(floor::FloorNum) -> SetupStats,
+        setup: impl Fn(floor::FloorNum) -> SetupStats,
     ) -> Plan {
         let step_lookup_table = floor::make_step_lookup_table();
         let floors = floor::Floor::all(uu);

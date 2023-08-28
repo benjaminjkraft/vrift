@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct SetupStats {
     pub power: f64,
     pub luck: f64,
