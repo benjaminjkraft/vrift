@@ -267,24 +267,20 @@ pub struct StepInfo {
     pub floor_start: StepNum,
     pub next_eclipse: StepNum,
 }
-pub type StepLookupTable = [StepInfo; MAX_STEP];
+pub type StepLookupTable = Vec<StepInfo>; // length: MAX_STEP
 
 pub fn make_step_lookup_table() -> StepLookupTable {
-    let mut table = [StepInfo {
-        floor: 0,
-        floor_start: 0,
-        next_eclipse: 0,
-    }; MAX_STEP];
+    let mut table = Vec::new();
     let mut last = floor_to_first_step(1);
     for f in 1..=MAX_FLOOR {
         let next = floor_to_first_step(f + 1);
         let next_eclipse = floor_to_first_step(f - f % 8 + 8);
-        for s in last..next {
-            table[s] = StepInfo {
+        for _ in last..next {
+            table.push(StepInfo {
                 floor: f,
                 floor_start: last,
                 next_eclipse,
-            };
+            });
         }
         last = next
     }

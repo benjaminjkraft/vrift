@@ -1,10 +1,12 @@
 use crate::floor;
 use crate::setup::SetupStats;
+#[cfg(test)]
+use insta::assert_snapshot;
 
 const INTERNAL_EPSILON: f64 = 1e-50;
 const PRINT_EPSILON: f64 = 1e-4;
 type HuntNum = i16;
-type Dist = [f64; floor::MAX_STEP];
+type Dist = Vec<f64>; // length: floor::MAX_STEP
 
 #[derive(Debug)]
 struct State {
@@ -21,11 +23,11 @@ impl State {
     }
 
     fn start() -> State {
-        let mut dist = [0.0; floor::MAX_STEP];
+        let mut dist = vec![0.0; floor::MAX_STEP];
         dist[0] = 1.0;
         return State {
             dist,
-            end_dist: [0.0; floor::MAX_STEP],
+            end_dist: vec![0.0; floor::MAX_STEP],
             start_step: 0,
             end_step: 1,
             hunt: 0,
@@ -91,7 +93,7 @@ impl Plan {
     }
 
     fn step(&self, prev: State) -> State {
-        let mut next_dist: Dist = [0.0; floor::MAX_STEP];
+        let mut next_dist: Dist = vec![0.0; floor::MAX_STEP];
         for step_before in prev.start_step..prev.end_step {
             let floor::StepInfo {
                 floor,
@@ -157,7 +159,7 @@ impl Plan {
         return state.end_dist;
     }
 
-    pub fn dist_to_string(&self, dist: &Dist) -> String {
+    pub fn dist_to_string(&self, dist: &Dist, prec: usize) -> String {
         let mut floor_dist = [0.0; floor::MAX_FLOOR + 1];
         for step in 0..floor::MAX_STEP {
             floor_dist[self.step_lookup_table[step].floor] += dist[step]
@@ -184,16 +186,71 @@ impl Plan {
             .take_while(|&(floor, _, _)| floor <= last_floor)
             .map(|(floor, prob, cumulative)| {
                 return format!(
-                    "{:>2} | {:>3} | {:>4.1}% | {:>5.1}%",
+                    "{:>2} | {:>3} | {:>pwidth$.prec$}% | {:>cwidth$.prec$}%",
                     // note: doesn't count getting to the floor (i.e. core looting, not prestige)
                     (floor - 1) / 8,
                     floor,
                     100.0 * prob,
                     100.0 * cumulative,
+                    pwidth = prec + 3,
+                    cwidth = prec + 4,
+                    prec = prec,
                 );
             })
             .collect::<Vec<String>>()
             .join("\n");
         return format!("te |  fl | exact | at least\n{}", rows_str);
     }
+}
+
+#[test]
+fn test_snapshots() {
+    let tdt_aerb_r2023_2au = SetupStats::new(11416, 45, false);
+    let ccdt_pb9_rusc_2au = SetupStats::new(14251, 84, false);
+    let ccdt_pb9_rupc_2au = SetupStats::new(18650, 64, false);
+    let ccdt_pb9_rupc_2au_cf = SetupStats::new(18650, 64, true);
+    let ccdt_ssdb_rulpc_4au_cf = SetupStats::new(28600, 101, true);
+    let uc_cf = SetupStats::uc(true);
+
+    let plan = Plan::new(10, 7, 5, true, true, true, |_| uc_cf);
+    let out = plan.dist_to_string(&plan.sim(), 3);
+    assert_snapshot!("10:7:5 SSi:UU:SSt UC CF", out);
+
+    let plan = Plan::new(2, 1, 1, true, true, true, |_| uc_cf);
+    let out = plan.dist_to_string(&plan.sim(), 3);
+    assert_snapshot!("2:1:1 SSi:UU:SSt UC CF", out);
+
+    let plan = Plan::new(10, 7, 5, true, true, true, |f| {
+        if f % 8 == 0 {
+            uc_cf
+        } else {
+            ccdt_ssdb_rulpc_4au_cf
+        }
+    });
+    let out = plan.dist_to_string(&plan.sim(), 3);
+    assert_snapshot!("10:7:5 SSi:UU:SSt CCDT:SSDB:RULPC 4au CF UC-EC", out);
+
+    let plan = Plan::new(10, 7, 5, true, true, false, |f| {
+        if f % 8 == 0 {
+            ccdt_pb9_rupc_2au_cf
+        } else if f < 16 {
+            ccdt_pb9_rusc_2au
+        } else {
+            ccdt_pb9_rupc_2au
+        }
+    });
+    let out = plan.dist_to_string(&plan.sim(), 3);
+    assert_snapshot!("10:7:5 SSi:UU CCDT:PB9:RUSC+RUPC 2au CF-EC", out);
+
+    let plan = Plan::new(10, 7, 5, false, false, false, |_| tdt_aerb_r2023_2au);
+    let out = plan.dist_to_string(&plan.sim(), 3);
+    assert_snapshot!("10:7:5 TDT:AERB:R2023 2au", out);
+
+    let plan = Plan::new(4, 3, 2, false, false, false, |_| tdt_aerb_r2023_2au);
+    let out = plan.dist_to_string(&plan.sim(), 3);
+    assert_snapshot!("4:3:2 TDT:AERB:R2023 2au", out);
+
+    let plan = Plan::new(1, 1, 1, false, false, false, |_| tdt_aerb_r2023_2au);
+    let out = plan.dist_to_string(&plan.sim(), 3);
+    assert_snapshot!("2:1:1 TDT:AERB:R2023 2au", out);
 }
