@@ -79,6 +79,17 @@ impl Plan {
         };
     }
 
+    fn min_step_for_hunt(&self, hunt: HuntNum) -> floor::StepNum {
+        // end if
+        //  sync + siphon*(round-1) > hunt+1,
+        // or equivalently if
+        //  r > (hunt+1-sync)/siphon + 1
+        // but handle the mathematical horror that is round-towards-zero. I think.
+        // TODO: test
+        let min_round = ((hunt + self.siphon + 1 - self.sync) / self.siphon + 1).max(1);
+        return floor::floor_to_first_step((min_round * 8 - 7) as floor::FloorNum);
+    }
+
     fn step(&self, prev: State) -> State {
         let mut next_dist: Dist = [0.0; floor::MAX_STEP];
         for step_before in prev.start_step..prev.end_step {
@@ -119,14 +130,7 @@ impl Plan {
             }
         }
 
-        // end if
-        //  sync + siphon*(round-1) > hunt+1,
-        // or equivalently if
-        //  r > (hunt+1-sync)/siphon + 1
-        // but handle the mathematical horror that is round-towards-zero. I think.
-        // TODO: extract + test
-        let min_round = ((prev.hunt + self.siphon + 1 - self.sync) / self.siphon + 1).max(1);
-        let min_step = floor::floor_to_first_step((min_round * 8 - 7) as floor::FloorNum);
+        let min_step = self.min_step_for_hunt(prev.hunt);
         let mut end_dist = prev.end_dist;
         if min_step > next_start {
             for step in next_start..min_step {
