@@ -8,7 +8,6 @@ pub type FloorNum = usize;
 pub type StepNum = usize;
 pub const MAX_FLOOR: FloorNum = 200;
 pub const MAX_STEP: StepNum = 24525;
-pub type StepLookupTable = [FloorNum; MAX_STEP];
 
 #[derive(Debug)]
 pub struct Floor {
@@ -262,13 +261,30 @@ pub fn floor_to_first_step(f: FloorNum) -> StepNum {
         + (m * (r+2) * 10);
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct StepInfo {
+    pub floor: FloorNum,
+    pub floor_start: StepNum,
+    pub next_eclipse: StepNum,
+}
+pub type StepLookupTable = [StepInfo; MAX_STEP];
+
 pub fn make_step_lookup_table() -> StepLookupTable {
-    let mut table = [0; MAX_STEP];
+    let mut table = [StepInfo {
+        floor: 0,
+        floor_start: 0,
+        next_eclipse: 0,
+    }; MAX_STEP];
     let mut last = floor_to_first_step(1);
     for f in 1..=MAX_FLOOR {
         let next = floor_to_first_step(f + 1);
+        let next_eclipse = floor_to_first_step(f - f % 8 + 8);
         for s in last..next {
-            table[s] = f;
+            table[s] = StepInfo {
+                floor: f,
+                floor_start: last,
+                next_eclipse,
+            };
         }
         last = next
     }
@@ -294,7 +310,9 @@ fn test_floor_to_first_step() {
 
     let table = make_step_lookup_table();
     for s in 0..table.len() {
-        assert!(floor_to_first_step(table[s]) <= s && s < floor_to_first_step(table[s] + 1));
+        assert!(
+            floor_to_first_step(table[s].floor) <= s && s < floor_to_first_step(table[s].floor + 1)
+        );
     }
 }
 

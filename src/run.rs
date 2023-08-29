@@ -49,11 +49,13 @@ pub struct Plan {
 impl Plan {
     pub fn new(
         speed_level: u8,
+        // TODO: allow partial run (2 constructors?)
         sync_level: u8,
         siphon_level: u8,
         super_siphon: bool,
         uu: bool,
         string_stepping: bool,
+        // TODO: handle change-within-floor by making this a fn of steps
         setup: impl Fn(floor::FloorNum) -> SetupStats,
     ) -> Plan {
         let step_lookup_table = floor::make_step_lookup_table();
@@ -80,19 +82,20 @@ impl Plan {
     fn step(&self, prev: State) -> State {
         let mut next_dist: Dist = [0.0; floor::MAX_STEP];
         for step_before in prev.start_step..prev.end_step {
-            let floor = self.step_lookup_table[step_before];
+            let floor::StepInfo {
+                floor,
+                floor_start,
+                next_eclipse,
+            } = self.step_lookup_table[step_before];
             let setup = &self.setup_lookup_table[floor];
             let outcome = &self.outcome_lookup_table[floor];
 
             let speed = self.speed + if setup.cf { 1 } else { 0 };
             let prev_prob = prev.dist[step_before];
-            let next_eclipse_floor = floor - floor % 8 + 8;
-            let next_eclipse_step = floor::floor_to_first_step(next_eclipse_floor);
-            next_dist[next_eclipse_step.min(step_before + speed)] += prev_prob * outcome.push;
-            next_dist[next_eclipse_step.min(step_before + self.ta_mult * speed)] +=
+            next_dist[next_eclipse.min(step_before + speed)] += prev_prob * outcome.push;
+            next_dist[next_eclipse.min(step_before + self.ta_mult * speed)] +=
                 prev_prob * outcome.push_ta;
             if self.uu {
-                let floor_start = floor::floor_to_first_step(floor);
                 next_dist[floor_start.max(step_before.max(5) - 5)] += prev_prob * outcome.fail;
                 next_dist[floor_start.max(step_before.max(10) - 10)] +=
                     prev_prob * outcome.fail_bulwark;
@@ -121,6 +124,7 @@ impl Plan {
         // or equivalently if
         //  r > (hunt+1-sync)/siphon + 1
         // but handle the mathematical horror that is round-towards-zero. I think.
+        // TODO: extract + test
         let min_round = ((prev.hunt + self.siphon + 1 - self.sync) / self.siphon + 1).max(1);
         let min_step = floor::floor_to_first_step((min_round * 8 - 7) as floor::FloorNum);
         let mut end_dist = prev.end_dist;
@@ -152,7 +156,7 @@ impl Plan {
     pub fn dist_to_string(&self, dist: &Dist) -> String {
         let mut floor_dist = [0.0; floor::MAX_FLOOR + 1];
         for step in 0..floor::MAX_STEP {
-            floor_dist[self.step_lookup_table[step]] += dist[step]
+            floor_dist[self.step_lookup_table[step].floor] += dist[step]
         }
 
         let mut cumulative = 1.0;
@@ -186,6 +190,6 @@ impl Plan {
             })
             .collect::<Vec<String>>()
             .join("\n");
-        return format!("te |  fl |  prob |  cumul\n{}", rows_str);
+        return format!("te |  fl | exact | at least\n{}", rows_str);
     }
 }
