@@ -4,6 +4,19 @@ mod run;
 mod setup;
 mod util;
 
+// TODO:
+// - UI:
+//   - wasm-bindgen setup
+//   - comparison chart a la the run comparison charts
+//   - setup constructor
+// - setup based on traps rather than power/luck
+// - per-step rather than per-floor setup
+// - mid-run start
+// - adjust ARs to MHCT
+// - README
+// eventually:
+// - mid-run upgrades
+
 use crate::run::Plan;
 use crate::setup::SetupStats;
 
