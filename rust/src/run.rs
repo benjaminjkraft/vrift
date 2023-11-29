@@ -2,6 +2,9 @@ use crate::floor;
 use crate::setup::SetupStats;
 #[cfg(test)]
 use insta::assert_snapshot;
+use js_sys;
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
 
 const INTERNAL_EPSILON: f64 = 1e-50;
 const PRINT_EPSILON: f64 = 1e-4;
@@ -35,6 +38,7 @@ impl State {
     }
 }
 
+#[wasm_bindgen]
 pub struct Plan {
     speed: floor::StepNum,
     ta_mult: floor::StepNum,
