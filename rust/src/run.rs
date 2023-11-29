@@ -4,7 +4,6 @@ use crate::setup::SetupStats;
 use insta::assert_snapshot;
 use js_sys;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
 
 const INTERNAL_EPSILON: f64 = 1e-50;
 const PRINT_EPSILON: f64 = 1e-4;
@@ -50,6 +49,36 @@ pub struct Plan {
     step_lookup_table: floor::StepLookupTable,
     setup_lookup_table: Vec<SetupStats>,
     outcome_lookup_table: Vec<floor::Outcome>,
+}
+
+// TODO: should go in lib.rs since it's just for js?
+#[wasm_bindgen]
+impl Plan {
+    #[wasm_bindgen(constructor)]
+    pub fn new_for_js(
+        // TODO: maybe just make this a struct?
+        speed_level: u8,
+        sync_level: u8,
+        siphon_level: u8,
+        super_siphon: bool,
+        uu: bool,
+        string_stepping: bool,
+        // TODO: make this typed in TS as `(floor: number) => SetupStats`
+        setup: &js_sys::Function,
+    ) -> Plan {
+        return Plan::new(
+            speed_level,
+            sync_level,
+            siphon_level,
+            super_siphon,
+            uu,
+            string_stepping,
+            |f| {
+                let js_ret = setup.call1(&JsValue::null(), &JsValue::from(f)).unwrap();
+                SetupStats::try_from(js_ret).unwrap()
+            },
+        );
+    }
 }
 
 impl Plan {
