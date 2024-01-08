@@ -56,7 +56,7 @@ fn main() {
 
     setups.into_iter().for_each(|s| {
         let plan = Plan::new(10, 7, 5, true, true, true, |f| {
-            if f % 8 == 0 || f > 13 * 8 - 3 {
+            if f % 8 == 0 || f > 15 * 8 {
                 uc_cf
             } else {
                 s.setup

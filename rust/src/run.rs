@@ -152,16 +152,23 @@ impl Plan {
 
         let mut next_start = prev.start_step.max(10) - 10;
         let mut next_end = prev.end_step + (self.speed + 1) * self.ta_mult;
-        for step in next_start..next_end {
-            if next_dist[step] > INTERNAL_EPSILON {
-                next_start = step;
-                break;
+        if (next_start..next_end)
+            .into_iter()
+            .all(|prob| next_dist[prob] <= INTERNAL_EPSILON)
+        {
+            next_end = next_start
+        } else {
+            for step in next_start..next_end {
+                if next_dist[step] > INTERNAL_EPSILON {
+                    next_start = step;
+                    break;
+                }
             }
-        }
-        for step in (next_start..next_end).rev() {
-            if next_dist[step] > INTERNAL_EPSILON {
-                next_end = step + 1;
-                break;
+            for step in (next_start..next_end).rev() {
+                if next_dist[step] > INTERNAL_EPSILON {
+                    next_end = step + 1;
+                    break;
+                }
             }
         }
 
