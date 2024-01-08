@@ -234,6 +234,47 @@ impl Plan {
             .join("\n");
         return format!("te |  fl | exact | at least\n{}", rows_str);
     }
+
+    pub fn dist_to_string_short(&self, dist: &Dist, prec: usize) -> String {
+        let mut te_dist = [0.0; floor::MAX_FLOOR / 8 + 1];
+        for step in 0..floor::MAX_STEP {
+            te_dist[self.step_lookup_table[step].floor / 8] += dist[step]
+        }
+
+        let mut cumulative = 1.0;
+        let rows: Vec<(floor::FloorNum, f64, f64)> = te_dist
+            .into_iter()
+            .enumerate()
+            .skip_while(|&(_, prob)| prob < PRINT_EPSILON)
+            .map(|(te, prob)| {
+                let row = (te, prob, cumulative);
+                cumulative -= prob;
+                return row;
+            })
+            .collect();
+        let last_index = rows
+            .iter()
+            .rposition(|&(_, prob, _)| prob > PRINT_EPSILON)
+            .unwrap();
+        let last_te = rows[last_index].0;
+        let rows_str = rows
+            .into_iter()
+            .take_while(|&(te, _, _)| te <= last_te)
+            .map(|(te, prob, cumulative)| {
+                return format!(
+                    "{:>2} | {:>pwidth$.prec$}% | {:>cwidth$.prec$}%",
+                    te,
+                    100.0 * prob,
+                    100.0 * cumulative,
+                    pwidth = prec + 3,
+                    cwidth = prec + 4,
+                    prec = prec,
+                );
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+        return format!("te | exact | at least\n{}", rows_str);
+    }
 }
 
 #[test]
